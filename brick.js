@@ -144,7 +144,7 @@ Aspects.prototype = {
 			args.unshift(orig);
 			return code.apply(self, args);
 		};
-	},
+	}
 };
 	 
 function Brick() {}
