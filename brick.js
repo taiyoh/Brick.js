@@ -157,8 +157,9 @@ Brick.create = function() {
 		this.initialize.apply(this, arguments);
 	};
 	c.extend = function() {
-		var c = this;
+		var c = (this) ? this : c;
 		var args = makeArray(arguments);
+		c.prototype = objExtend(true, new Object, c.prototype);
 		for (var i = 0, obj; obj = args[i]; i++) {
 			objExtend(true, c.prototype, obj);
 		}
