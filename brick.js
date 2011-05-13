@@ -26,8 +26,8 @@ function makeArray(args, sp) {
 var objExtend = (function() {
 	var re = new RegExp('Object|Array|Date|Arguments', 'i');
 
-	function _cloneObject(o) {
-		var type = detectType(o);
+	function _cloneObject(o, type) {
+		if(!type) type = detectType(o);
 		if (type == 'Array') {
 			var newList = new Array;
 			for (var i = 0, e; e = o[i];  i++) {
@@ -49,9 +49,16 @@ var objExtend = (function() {
 	function _extendObject(p, o, deepCopy) {
 		for (var k in o) {
 			var v = o[k];
-			p[k] =  (deepCopy && re.test(detectType(v)))
-				? _cloneObject(v)
-				: v;
+			var type = detectType(v);
+			if (/^\+/.test(k) && type == 'Object') {
+				var key = k.replace(/^\+/, '');
+				p[key] = _extendObject(p[key], v, deepCopy);
+			}
+			else {
+				p[k] = (deepCopy && re.test(type))
+					? _cloneObject(v, type)
+					: v;
+			}
 		}
 		return p;
 	}
@@ -101,6 +108,44 @@ Events.prototype = {
 		}
 	}
 };
+
+function Aspects() {
+	this.aspects = new Object;
+}
+Aspects.prototype = {
+	aspects  : new Object,
+	addBefore: function(label, code) {
+		var self = this;
+		var orig = self[label];
+		if (!orig) return;
+		self[label] = function() {
+			code.apply(self, arguments);
+			return orig.apply(self, arguments);
+		};
+	},
+	addAfter: function(label, code) {
+		var self = this;
+		var orig = self[label];
+		if (!orig) return;
+		self[label] = function() {
+			var args = makeArray(arguments);
+			var res = orig.apply(self, args);
+			args.unshift(res);
+			code.apply(self, args);
+			return res;
+		};
+	},
+	addAround: function(label, code) {
+		var self = this;
+		var orig = self[label];
+		if (!orig) return;
+		self[label] = function() {
+			var args = makeArray(arguments);
+			args.unshift(orig);
+			return code.apply(self, args);
+		};
+	},
+};
 	 
 function Brick() {}
 Brick.create = function() {
@@ -121,6 +166,7 @@ Brick.create = function() {
 	};
 	var args = makeArray(arguments);
 	args.unshift(new Brick);
+	args.unshift(new Aspects);
 	args.unshift(new Events);
 	c.extend.apply(c, args);
 	return c;
@@ -131,38 +177,6 @@ Brick.prototype = {
 	attributes: new Object,
 	style     : new Object,
 	events    : new Object,
-	aspects   : new Object,
-	_addBefore: function(label, code) {
-		var self = this;
-		var orig = self[label];
-		if (!orig) return;
-		self[label] = function() {
-			code.apply(self, arguments);
-			return orig.apply(self, arguments);
-		};
-	},
-	_addAfter: function(label, code) {
-		var self = this;
-		var orig = self[label];
-		if (!orig) return;
-		self[label] = function() {
-			var args = makeArray(arguments);
-			var res = orig.apply(self, args);
-			args.unshift(res);
-			code.apply(self, args);
-			return res;
-		};
-	},
-	_addAround: function(label, code) {
-		var self = this;
-		var orig = self[label];
-		if (!orig) return;
-		self[label] = function() {
-			var args = makeArray(arguments);
-			args.unshift(orig);
-			return code.apply(self, args);
-		};
-	},
 	_ensureAspects: function() {
 		var self = this;
 		var aspects = self.aspects;
@@ -173,13 +187,13 @@ Brick.prototype = {
 				if (detectType(code) != 'Function') continue;
 				switch (sign) {
 				case 'before':
-					self._addBefore(label, code);
+					self.addBefore(label, code);
 					break;
 				case 'after':
-					self._addAfter(label, code);
+					self.addAfter(label, code);
 					break;
 				case 'around':
-					self._addAround(label, code);
+					self.addAround(label, code);
 					break;
 				default:
 					break;
