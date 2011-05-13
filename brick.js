@@ -104,7 +104,6 @@ Events.prototype = {
 	 
 function Brick() {}
 Brick.create = function() {
-	var args = makeArray(arguments);
 	var c = function BrickObj() {
 		this._stack = new Object;
 		this._ensureAspects();
@@ -112,11 +111,17 @@ Brick.create = function() {
 		this._attachEvents();
 		this.initialize.apply(this, arguments);
 	};
-	args.unshift(new Events);
+	c.extend = function() {
+		var args = makeArray(arguments);
+		for (var i = 0, obj; obj = args[i]; i++) {
+			objExtend(true, c.prototype, obj);
+		}
+		return c;
+	};
+	var args = makeArray(arguments);
 	args.unshift(new Brick);
-	for (var i = 0, obj; obj = args[i]; i++) {
-		objExtend(true, c.prototype, obj);
-	}
+	args.unshift(new Events);
+	c.extend.apply(c, args);
 	return c;
 };
 Brick.prototype = {
@@ -263,6 +268,3 @@ Brick.prototype = {
 global.Brick = Brick;
 	 
 })(window);
-
-
-
