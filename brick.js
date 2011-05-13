@@ -149,28 +149,31 @@ Aspects.prototype = {
 	 
 function Brick() {}
 Brick.create = function() {
-	var c = function BrickObj() {
-		this._stack = new Object;
-		this._ensureAspects();
-		this._buildElement();
-		this._attachEvents();
-		this.initialize.apply(this, arguments);
+	var initBrick = function() {
+		return function BrickObj() {
+			this._stack = new Object;
+			this._ensureAspects();
+			this._buildElement();
+			this._attachEvents();
+			this.initialize.apply(this, arguments);
+		};
 	};
-	c.extend = function() {
-		var c = (this) ? this : c;
+	var _extend = function() {
+		var func = arguments.callee;
 		var args = makeArray(arguments);
-		c.prototype = objExtend(true, new Object, c.prototype);
+		var parent = (this)
+			? objExtend(true, new Object, this.prototype)
+			: new Object;
+		var c = initBrick();
+		c.extend = func;
+		c.prototype = parent;
 		for (var i = 0, obj; obj = args[i]; i++) {
 			objExtend(true, c.prototype, obj);
 		}
 		return c;
 	};
-	var args = makeArray(arguments);
-	args.unshift(new Brick);
-	args.unshift(new Aspects);
-	args.unshift(new Events);
-	c.extend.apply(c, args);
-	return c;
+	var args = [new Events, new Aspects, new Brick].concat(makeArray(arguments));
+	return _extend.apply(null, args);
 };
 Brick.prototype = {
 	tagName   : 'div',
