@@ -2,16 +2,6 @@
 
 (function(global) {
 
-if (!Function.prototype.bind)
-	Function.prototype.bind = function() {
-		var f = this;
-		var args = makeArray(arguments);
-		var self = args.shift();
-		return function() {
-			return f.apply(self, args.concat(makeArray(arguments)));
-		};
-	};
-
 // util functions  
 function detectType(o) {
 	return Object.prototype.toString.call(o)
@@ -77,6 +67,24 @@ var objExtend = (function() {
 	};
 })();
 	 
+if (!Function.prototype.bind)
+Function.prototype.bind = function() {
+	var f = this;
+	var args = makeArray(arguments);
+	var self = args.shift();
+	return function() {
+		return f.apply(self, args.concat(makeArray(arguments)));
+	};
+};
+
+if (!String.prototype.ucFirst)
+String.prototype.ucFirst = function() {
+	return this.replace(/^(.)(.+)$/, function() {
+		var a = makeArray(arguments, 1);
+		return a[0].toUpperCase() + a[1].toLowerCase();
+	});
+};
+
 function Events() {
 	this._stack = new Object;
 }
@@ -114,6 +122,21 @@ function Aspects() {
 }
 Aspects.prototype = {
 	aspects  : new Object,
+	_ensureAspects: function() {
+		var self = this;
+		var aspects = self.aspects;
+		var re = /^(\w+)(\s*):(\s*)(\w+)$/;
+		for (var label in aspects) {
+			var code = aspects[label];
+			if (detectType(code) != 'Function') continue;
+			var m = re.exec(label);
+			var method = m[4], sign = m[1];
+			if (!method || !sign) continue;
+			sign = sign.ucFirst();
+			if (self['add' + sign])
+				self['add' + sign](method, code);
+		}
+	},
 	addBefore: function(label, code) {
 		var self = this;
 		var orig = self[label];
@@ -148,63 +171,13 @@ Aspects.prototype = {
 };
 	 
 function Brick() {}
-Brick.create = function() {
-	var initBrick = function() {
-		return function BrickObj() {
-			this._stack = new Object;
-			this._ensureAspects();
-			this._buildElement();
-			this._attachEvents();
-			this.initialize.apply(this, arguments);
-		};
-	};
-	var _extend = function() {
-		var func = arguments.callee;
-		var args = makeArray(arguments);
-		var parent = (this)
-			? objExtend(true, new Object, this.prototype)
-			: new Object;
-		var c = initBrick();
-		c.extend = func;
-		c.prototype = parent;
-		for (var i = 0, obj; obj = args[i]; i++) {
-			objExtend(true, c.prototype, obj);
-		}
-		return c;
-	};
-	var args = [new Events, new Aspects, new Brick].concat(makeArray(arguments));
-	return _extend.apply(null, args);
-};
 Brick.prototype = {
+	buildOnInitialize: false,
 	tagName   : 'div',
 	className : '',
 	attributes: new Object,
 	style     : new Object,
 	events    : new Object,
-	_ensureAspects: function() {
-		var self = this;
-		var aspects = self.aspects;
-		for (var label in aspects) {
-			var detail = aspects[label];
-			for (var sign in detail) {
-				var code = detail[sign];
-				if (detectType(code) != 'Function') continue;
-				switch (sign) {
-				case 'before':
-					self.addBefore(label, code);
-					break;
-				case 'after':
-					self.addAfter(label, code);
-					break;
-				case 'around':
-					self.addAround(label, code);
-					break;
-				default:
-					break;
-				}
-			}
-		}
-	},
 	_buildElement: function() {
 		if (this.el) return;
 		var div = document.createElement(this.tagName);
@@ -212,9 +185,7 @@ Brick.prototype = {
 		for (var a in this.attributes) {
 			div[a] = this.attributes[a];
 		}
-		for (var s in this.style) {
-			div.style[s] = this.style[s];
-		}
+		objExtend(div.style, this.style);
 		this.el = div;
 	},
 	_attachEventsSelector: {
@@ -284,6 +255,36 @@ Brick.prototype = {
 	}
 };
 	 
+Brick.create = function() {
+	var initBrick = function() {
+		return function BrickObj() {
+			this._stack = new Object;
+			this._ensureAspects();
+			if (!this.buildOnInitialize) {
+				this._buildElement();
+				this._attachEvents();
+			}
+			this.initialize.apply(this, arguments);
+		};
+	};
+	var _extend = function() {
+		var func = arguments.callee;
+		var args = makeArray(arguments);
+		var parent = (this)
+			? objExtend(true, new Object, this.prototype)
+			: new Object;
+		var c = initBrick();
+		c.extend = func;
+		c.prototype = parent;
+		for (var i = 0, obj; obj = args[i]; i++) {
+			objExtend(true, c.prototype, obj);
+		}
+		return c;
+	};
+	var args = [new Events, new Aspects, new Brick].concat(makeArray(arguments));
+	return _extend.apply(null, args);
+};
+
 global.Brick = Brick;
 	 
 })(window);
