@@ -1,8 +1,10 @@
-// Brick.js -- backbone.jsのBackbone.Viewだけ取り出してフルスクラッチで書いているライブラリ
+/**
+ * Brick.js
+ */
 
 (function(global) {
 
-// util functions  
+// util functions
 function detectType(o) {
 	return Object.prototype.toString.call(o)
 		.replace(/^\[object (.+)\]$/, '$1');
@@ -66,7 +68,7 @@ var objExtend = (function() {
 		return parent;
 	};
 })();
-	 
+
 if (!Function.prototype.bind)
 Function.prototype.bind = function() {
 	var f = this;
@@ -94,7 +96,7 @@ Events.prototype = {
 		if(!this._stack[name]) {
 			this._stack[name] = new Array;
 		}
-		this._stack[name].push(callback);
+		this._stack[name].push(callback.bind(this));
 	},
 	unbind: function(name, callback) {
 		if (typeof this._stack[name] == undefined) return;
@@ -169,10 +171,9 @@ Aspects.prototype = {
 		};
 	}
 };
-	 
+
 function Brick() {}
 Brick.prototype = {
-	buildOnInitialize: false,
 	tagName   : 'div',
 	className : '',
 	attributes: new Object,
@@ -214,7 +215,7 @@ Brick.prototype = {
 			else {
 				self.el.attachEvent('on' + bind, callback);
 			}
-		} 
+		}
 	},
 	_attachEvents: function() {
 		var self = this;
@@ -229,7 +230,7 @@ Brick.prototype = {
 		}
 		for (var key in self.events) {
 			var callback = self.events[key];
-			var m = /^([^\s]+) (.+)$/.exec(key);
+			var m = /^([^\s]+)\s+(.+)$/.exec(key);
 			var bind, sel;
 			if (m) {
 				bind = m[1];
@@ -254,17 +255,27 @@ Brick.prototype = {
 		}
 	}
 };
-	 
+
 Brick.create = function() {
 	var initBrick = function() {
-		return function BrickObj() {
+		return function BrickObj(obj) {
 			this._stack = new Object;
 			this._ensureAspects();
-			if (!this.buildOnInitialize) {
-				this._buildElement();
-				this._attachEvents();
+			if (obj) {
+				if (obj.tagName)   this.tagName   = obj.tagName;
+				if (obj.className) this.className = obj.className;
+				if (obj.el) {
+					this.el = obj.el;
+				}
+				else {
+					this._buildElement();
+				}
 			}
-			this.initialize.apply(this, arguments);
+			else {
+				this._buildElement();
+			}
+			this._attachEvents();
+			this.initialize.call(this, obj);
 		};
 	};
 	var _extend = function() {
@@ -286,5 +297,5 @@ Brick.create = function() {
 };
 
 global.Brick = Brick;
-	 
+
 })(window);
