@@ -1,6 +1,6 @@
-/**
- * Brick.js
- */
+/*	Brick.js v0.1 <https://github.com/taiyoh/Brick.js> 
+	is released under the MIT License <http://www.opensource.org/licenses/mit-license.php> 
+*/
 
 (function(global) {
 
@@ -99,7 +99,7 @@ Events.prototype = {
 		this._stack[name].push(callback.bind(this));
 	},
 	unbind: function(name, callback) {
-		if (typeof this._stack[name] == undefined) return;
+		if (typeof this._stack[name] == 'undefined') return;
 		var callbacks = new Array;
 		if (callback) {
 			for (var i = 0, c; c = this._stack[name][i]; i++) {
