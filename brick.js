@@ -124,7 +124,7 @@ function Events_bind(name, callback) {
 function Events_unbind(name, callback) {
     if (typeof this._stack[name] == 'undefined') return;
     this._stack[name] = _select(this._stack[name], function(c) {
-        return c == callback;
+        return c != callback;
     });
 }
 function Events_trigger(name) {
@@ -235,7 +235,7 @@ function Brick_plugin_set(label, klass) {
 
 function Brick_plugin_remove(label) {
     this.list = _select(this.list, function(e) {
-         return e.label == label;
+         return e.label != label;
     });
 }
 
